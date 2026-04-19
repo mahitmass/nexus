@@ -1,0 +1,31 @@
+{
+  "recommendations": [
+    "github.copilot",
+    "github.copilot-chat",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "eamodio.gitlens",
+    "ms-azuretools.vscode-docker",
+    "rangav.vscode-thunder-client",
+    "ms-toolsai.jupyter",
+    "prisma.prisma",
+    "bradlc.vscode-tailwindcss",
+    "ms-vscode.vscode-typescript-next",
+    "GraphQL.vscode-graphql",
+    "GraphQL.vscode-graphql-syntax",
+    "zxh404.vscode-proto3",
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.black-formatter",
+    "vscjava.vscode-java-pack",
+    "redhat.java",
+    "expo.vscode-expo-tools",
+    "vitest.explorer",
+    "orta.vscode-jest",
+    "ms-playwright.playwright",
+    "streetsidesoftware.code-spell-checker",
+    "usernamehw.errorlens",
+    "formulahendry.auto-rename-tag",
+    "christian-kohler.path-intellisense"
+  ]
+}

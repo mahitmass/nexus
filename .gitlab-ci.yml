@@ -1,0 +1,133 @@
+# .gitlab-ci.yml
+# Project Nexus — GitLab CI/CD pipeline
+# Mirrors GitHub Actions structure for teams using GitLab
+
+image: node:20-alpine
+
+stages:
+  - quality
+  - test
+  - build
+  - deploy
+
+variables:
+  PNPM_VERSION: "9"
+  NODE_VERSION: "20"
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+
+.pnpm-setup: &pnpm-setup
+  before_script:
+    - npm install -g pnpm@$PNPM_VERSION
+    - pnpm install --frozen-lockfile
+
+# ── Quality ──────────────────────────────────────────────────
+lint:
+  stage: quality
+  <<: *pnpm-setup
+  script:
+    - pnpm turbo lint
+  cache:
+    key: "$CI_COMMIT_REF_SLUG-pnpm"
+    paths: [node_modules/, .turbo/]
+
+type-check:
+  stage: quality
+  <<: *pnpm-setup
+  script:
+    - pnpm turbo type-check
+  cache:
+    key: "$CI_COMMIT_REF_SLUG-pnpm"
+    paths: [node_modules/, .turbo/]
+
+# ── Tests ─────────────────────────────────────────────────────
+unit-tests:
+  stage: test
+  <<: *pnpm-setup
+  script:
+    - pnpm turbo test
+  coverage: '/Statements\s*:\s*(\d+\.?\d*)%/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+  cache:
+    key: "$CI_COMMIT_REF_SLUG-pnpm"
+    paths: [node_modules/, .turbo/]
+
+python-tests:
+  stage: test
+  image: python:3.12-slim
+  before_script:
+    - cd services/ai-service
+    - pip install -r requirements.txt
+  script:
+    - pytest --tb=short -q
+
+# ── Build Docker Images ───────────────────────────────────────
+build-api-gateway:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  only:
+    - main
+    - develop
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build
+        --cache-from $CI_REGISTRY_IMAGE/api-gateway:latest
+        --tag $CI_REGISTRY_IMAGE/api-gateway:$CI_COMMIT_SHA
+        --tag $CI_REGISTRY_IMAGE/api-gateway:latest
+        ./services/api-gateway
+    - docker push $CI_REGISTRY_IMAGE/api-gateway:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE/api-gateway:latest
+
+build-ai-service:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  only:
+    - main
+    - develop
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build
+        --cache-from $CI_REGISTRY_IMAGE/ai-service:latest
+        --tag $CI_REGISTRY_IMAGE/ai-service:$CI_COMMIT_SHA
+        --tag $CI_REGISTRY_IMAGE/ai-service:latest
+        ./services/ai-service
+    - docker push $CI_REGISTRY_IMAGE/ai-service:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE/ai-service:latest
+
+# ── Deploy ────────────────────────────────────────────────────
+deploy-staging:
+  stage: deploy
+  environment:
+    name: staging
+    url: https://staging.nexus.yourdomain.com
+  only:
+    - develop
+  script:
+    - echo "Deploy to staging ECS / EC2 here"
+    - echo "IMAGE_TAG=$CI_COMMIT_SHA" >> deploy.env
+  artifacts:
+    reports:
+      dotenv: deploy.env
+
+deploy-production:
+  stage: deploy
+  environment:
+    name: production
+    url: https://nexus.yourdomain.com
+  only:
+    - main
+  when: manual
+  script:
+    - echo "Deploy to production — manual gate"
+    - echo "IMAGE_TAG=$CI_COMMIT_SHA" >> deploy.env
+  artifacts:
+    reports:
+      dotenv: deploy.env

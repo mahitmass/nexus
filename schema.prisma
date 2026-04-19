@@ -1,0 +1,170 @@
+// ============================================================
+// Project Nexus — Agnostic Prisma Schema
+// THEME ADAPTATION: Rename "Record" to your domain entity:
+//   Agriculture → Field / Crop / HarvestLog
+//   Healthcare  → Patient / Visit / LabResult
+//   FinTech     → Account / Transaction / Portfolio
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth ────────────────────────────────────────────────────
+model User {
+  id            String   @id @default(cuid())
+  externalId    String?  @unique  // Clerk user ID
+  email         String   @unique
+  name          String?
+  role          Role     @default(VIEWER)
+  organizationId String?
+  organization  Organization? @relation(fields: [organizationId], references: [id])
+  records       Record[]
+  aiSessions    AiSession[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([email])
+  @@index([organizationId])
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      Plan     @default(FREE)
+  users     User[]
+  records   Record[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  VIEWER
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+// ─── Core Domain (AGNOSTIC — rename per theme) ───────────────
+model Record {
+  id             String       @id @default(cuid())
+  // ↓ THEME: rename / add domain-specific fields below
+  title          String
+  description    String?
+  status         RecordStatus @default(ACTIVE)
+  metadata       Json?        // Flexible schema for any theme
+  numericValue   Float?       // Generic metric (yield, glucose, balance)
+  tags           String[]
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  events         RecordEvent[]
+  attachments    Attachment[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+  ARCHIVED
+}
+
+model RecordEvent {
+  id        String   @id @default(cuid())
+  recordId  String
+  record    Record   @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  type      String   // Agnostic event type string
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([recordId])
+  @@index([type])
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  recordId   String
+  record     Record   @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  url        String   // Cloudinary URL
+  publicId   String   // Cloudinary public ID
+  type       String   // image | document | video
+  size       Int
+  createdAt  DateTime @default(now())
+
+  @@index([recordId])
+}
+
+// ─── AI / LLM ─────────────────────────────────────────────────
+model AiSession {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  title     String?
+  messages  AiMessage[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([userId])
+}
+
+model AiMessage {
+  id        String     @id @default(cuid())
+  sessionId String
+  session   AiSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String     // user | assistant | system | tool
+  content   String
+  metadata  Json?      // tokens, model, latency, tool calls
+  createdAt DateTime   @default(now())
+
+  @@index([sessionId])
+}
+
+// ─── Audit Log ────────────────────────────────────────────────
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String   // CREATE | UPDATE | DELETE | LOGIN | etc.
+  resource   String   // Table / entity name
+  resourceId String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ─── Billing ─────────────────────────────────────────────────
+model Subscription {
+  id                   String   @id @default(cuid())
+  organizationId       String   @unique
+  stripeCustomerId     String?  @unique
+  stripeSubscriptionId String?  @unique
+  plan                 Plan     @default(FREE)
+  status               String   @default("active")
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
