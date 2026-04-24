@@ -1,0 +1,27 @@
+# PrahaariNet — Backend dependencies
+# Install order matters — PyTorch first (CUDA-specific), then PyG.
+
+# --- Core ---
+fastapi==0.115.4
+uvicorn[standard]==0.32.0
+pydantic==2.9.2
+python-dotenv==1.0.1
+httpx==0.27.2
+websockets==13.1
+
+# --- Graph DB ---
+neo4j==5.25.0
+
+# --- ML ---
+# Install PyTorch manually per your CUDA version:
+#   CPU:   pip install torch==2.4.1 --index-url https://download.pytorch.org/whl/cpu
+#   CUDA:  pip install torch==2.4.1 --index-url https://download.pytorch.org/whl/cu121
+torch==2.4.1
+torch-geometric==2.6.1
+scikit-learn==1.5.2
+joblib==1.4.2
+numpy==1.26.4
+pandas==2.2.3
+
+# --- Nice to have ---
+rich==13.9.2  # pretty logging
