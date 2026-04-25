@@ -173,6 +173,11 @@ prahaarinet/
 
 ---
 
+
+//Dev notes
+
+
+
 ## Pre-Hackathon Checklist
 
 Complete all of these **before Thursday night**:
@@ -232,4 +237,4 @@ Research foundations:
 - GNNExplainer — Ying et al. (2019)
 - Elliptic Bitcoin Dataset — Weber et al. (2019)
 
-Built with Claude Opus.
+
